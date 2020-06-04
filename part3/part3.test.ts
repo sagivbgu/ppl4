@@ -69,8 +69,10 @@ describe('braid tests', () => {
 
         expect(take(10000, braid(gEmpty, g1)))
             .to.deep.equal([1]);
+    });
 
-        // Both empty
+    it('2 inner generators can be "empty"', () => {
+        function* gEmpty() { }
         const { value, done } = braid(gEmpty, gEmpty).next();
         expect(value)
             .to.deep.equal(undefined);
