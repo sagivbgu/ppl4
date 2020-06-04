@@ -14,22 +14,31 @@ const getSlowRejectingPromise = () => new Promise((resolve, reject) => {
     setTimeout(reject, 100, rejectValue);
 });
 
-const getVerySlowPromise = () => new Promise((resolve, reject) => {
-    setTimeout(resolve, 100000000, slowPromiseValue);
-});
-
 describe('slower tests', () => {
+    it('assignment example', async () => {
+        const promise1 = new Promise((resolve, reject) => {
+            setTimeout(resolve, 500, 'one');
+        });
+
+        const promise2 = new Promise((resolve, reject) => {
+            setTimeout(resolve, 100, 'two');
+        });
+
+        const value = await slower([promise1, promise2]);
+        expect(value).to.deep.equal([0, 'one']);
+    });
+
     it('2 promises fulfill - return value of slower', async () => {
-        let value = await Promise.race([slower(getSlowPromise(), getFastPromise())]);
+        let value = await slower([getSlowPromise(), getFastPromise()]);
         expect(value).to.deep.equal([0, slowPromiseValue]);
 
-        value = await Promise.race([slower(getFastPromise(), getSlowPromise())]);
+        value = await slower([getFastPromise(), getSlowPromise()]);
         expect(value).to.deep.equal([1, slowPromiseValue]);
     });
 
     it('2 promises reject - reject', async () => {
         try {
-            await Promise.race([slower(getFastRejectingPromise(), getSlowRejectingPromise())])
+            await slower([getFastRejectingPromise(), getSlowRejectingPromise()])
         }
         catch (e) {
             expect(e).to.deep.equal(rejectValue);
@@ -40,7 +49,7 @@ describe('slower tests', () => {
 
     it('2 promises reject - reject (call in reverse order)', async () => {
         try {
-            await Promise.race([slower(getSlowRejectingPromise(), getFastRejectingPromise())])
+            await slower([getSlowRejectingPromise(), getFastRejectingPromise()])
         }
         catch (e) {
             expect(e).to.deep.equal(rejectValue);
@@ -51,7 +60,7 @@ describe('slower tests', () => {
 
     it('fast promise rejects - reject', async () => {
         try {
-            await Promise.race([slower(getFastRejectingPromise(), getSlowPromise())]);
+            await slower([getFastRejectingPromise(), getSlowPromise()]);
         }
         catch (e) {
             expect(e).to.deep.equal(rejectValue);
@@ -62,7 +71,7 @@ describe('slower tests', () => {
 
     it('fast promise rejects - reject (call in reverse order)', async () => {
         try {
-            await Promise.race([slower(getSlowPromise(), getFastRejectingPromise())]);
+            await slower([getSlowPromise(), getFastRejectingPromise()]);
         }
         catch (e) {
             expect(e).to.deep.equal(rejectValue);
@@ -73,7 +82,7 @@ describe('slower tests', () => {
 
     it('slow promise rejects - reject', async () => {
         try {
-            await Promise.race([slower(getSlowRejectingPromise(), getFastPromise())]);
+            await slower([getSlowRejectingPromise(), getFastPromise()]);
         }
         catch (e) {
             expect(e).to.deep.equal(rejectValue);
@@ -84,7 +93,7 @@ describe('slower tests', () => {
 
     it('slow promise rejects - reject (call in reverse order)', async () => {
         try {
-            await Promise.race([slower(getFastPromise(), getSlowRejectingPromise())]);
+            await slower([getFastPromise(), getSlowRejectingPromise()]);
         }
         catch (e) {
             expect(e).to.deep.equal(rejectValue);
@@ -94,8 +103,12 @@ describe('slower tests', () => {
     });
 
     // it('slower doesnt block', () => {
+    //     const getVerySlowPromise = () => new Promise((resolve, reject) => {
+    //         setTimeout(resolve, 100000000, slowPromiseValue);
+    //     });
+    
     //     let blocked = false;
-    //     slower(getVerySlowPromise(), getVerySlowPromise()).then(() => blocked = true);
+    //     slower([getVerySlowPromise(), getVerySlowPromise()]).then(() => blocked = true);
 
     //     expect(blocked).to.deep.equal(false);
     // });

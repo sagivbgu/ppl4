@@ -1,20 +1,20 @@
 import { KeyValuePair } from "ramda";
 
-export type SlowerResult<T, U> = KeyValuePair<number, T | U>;
+export type SlowerResult<T> = KeyValuePair<number, T>;
 
-const wrapPromise = <T>(promise: Promise<T>, index: number): Promise<KeyValuePair<number, T>> =>
-    new Promise<KeyValuePair<number, T>>((resolve, reject) =>
+const wrapPromise = <T>(promise: Promise<T>, index: number): Promise<SlowerResult<T>> =>
+    new Promise<SlowerResult<T>>((resolve, reject) =>
         promise.then((res) => resolve([index, res]))
             .catch((e) => reject(e)));
 
 // If both promises succeed, the return value is (0, value) or (1, value) where 0 indicates that
 // the first promise was ​slower​, and 1 indicates that the second promise was slower,
 // value is the return value of the promise that was resolved last.
-export const slower = <T, U>(p1: Promise<T>, p2: Promise<U>): Promise<SlowerResult<T, U>> => {
-    const w1 = wrapPromise(p1, 0);
-    const w2 = wrapPromise(p2, 1);
+export const slower = <T>(promises : Promise<T>[]): Promise<SlowerResult<T>> => {
+    const w1 = wrapPromise(promises[0], 0);
+    const w2 = wrapPromise(promises[1], 1);
 
-    return new Promise<SlowerResult<T, U>>((resolve, reject) =>
+    return new Promise<SlowerResult<T>>((resolve, reject) =>
         Promise.race([w1, w2])
             .then((fasterValue) => {
                 Promise.all([w1, w2])
