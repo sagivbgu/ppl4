@@ -24,6 +24,16 @@ export const makeClosure = (params: VarDecl[], body: CExp[], env: Env): Closure 
 export const isClosure = (x: any): x is Closure => x.tag === "Closure";
 
 // ========================================================
+// Tuple
+export interface Tuple {
+    tag: "Tuple";
+    vals: SExpValue[];
+}
+export const makeTuple = (values: SExpValue[]): Tuple =>
+    ({tag: "Tuple", vals: values});
+export const isTuple = (x: any): x is Tuple => x.tag === "Tuple";
+
+// ========================================================
 // SExp
 export interface CompoundSExp {
     tag: "CompoundSexp";
@@ -38,10 +48,10 @@ export interface SymbolSExp {
     val: string;
 }
 
-export type SExpValue = number | boolean | string | PrimOp | Closure | SymbolSExp | EmptySExp | CompoundSExp | void;
+export type SExpValue = number | boolean | string | PrimOp | Closure | Tuple | SymbolSExp | EmptySExp | CompoundSExp | void;
 export const isSExp = (x: any): x is SExpValue =>
     typeof(x) === 'string' || typeof(x) === 'boolean' || typeof(x) === 'number' ||
-    isSymbolSExp(x) || isCompoundSExp(x) || isEmptySExp(x) || isPrimOp(x) || isClosure(x);
+    isSymbolSExp(x) || isCompoundSExp(x) || isEmptySExp(x) || isPrimOp(x) || isClosure(x) || isTuple(x);
 
 export const makeCompoundSExp = (val1: SExpValue, val2: SExpValue): CompoundSExp =>
     ({tag: "CompoundSexp", val1: val1, val2 : val2});
