@@ -11,7 +11,7 @@
 ;; <bool-te>      ::= boolean  // bool-te()
 ;; <str-te>       ::= string   // str-te()
 ;; <void-te>      ::= void     // void-te()
-;; <compound-te>  ::= <proc-te> | <tuple-te>
+;; <compound-te>  ::= <proc-te> | ( <tuple-te> )
 ;; <non-tuple-te> ::= <atomic-te> | <proc-te> | <tvar>
 ;; <proc-te>      ::= [ <tuple-te> -> <non-tuple-te> ] // proc-te(param-tes: list(te), return-te: te)
 ;; <tuple-te>     ::= <non-empty-tuple-te> | <empty-te>
@@ -31,7 +31,7 @@
 */
 import { chain, concat, map, uniq } from "ramda";
 import { Sexp } from "s-expression";
-import { isEmpty } from "../shared/list";
+import { isEmpty, allT } from "../shared/list";
 import { isArray, isBoolean, isString } from '../shared/type-predicates';
 import { makeBox, setBox, unbox, Box } from '../shared/box';
 import { first, rest } from '../shared/list';
@@ -157,12 +157,24 @@ export const parseTExp = (texp: Sexp): Result<TExp> =>
     isArray(texp) ? parseCompoundTExp(texp) :
     makeFailure(`Unexpected TExp - ${texp}`);
 
+const parseCompoundTExp = (texps: Sexp[]): Result<CompoundTExp> => 
+    texps.indexOf('->') !== -1 ? parseProcTExp(texps) :
+    parseStandaloneTupleTExp(texps);
+
+// Parse a tuple TExp which is not a part of a ProcTExp
+const parseStandaloneTupleTExp = (texps: Sexp[]): Result<TupleTExp> =>
+    bind(parseTupleTExp(texps),
+        (tuple: TExp[]) =>
+            isEmpty(tuple) ? makeOk(makeEmptyTupleTExp()) :
+            allT(isNonTupleTExp , tuple) ? makeOk(makeNonEmptyTupleTExp(tuple)) :
+            makeFailure(`Nested tuples are not allowed - ${texps}`));
+
 /*
 ;; expected structure: (<params> -> <returnte>)
 ;; expected exactly one -> in the list
 ;; We do not accept (a -> b -> c) - must parenthesize
 */
-const parseCompoundTExp = (texps: Sexp[]): Result<ProcTExp> => {
+const parseProcTExp = (texps: Sexp[]): Result<ProcTExp> => {
     const pos = texps.indexOf('->');
     return (pos === -1)  ? makeFailure(`Procedure type expression without -> - ${texps}`) :
            (pos === 0) ? makeFailure(`No param types in proc texp - ${texps}`) :
@@ -207,6 +219,8 @@ export const unparseTExp = (te: TExp): Result<string> => {
         isTVar(x) ? up(tvarContents(x)) :
         isProcTExp(x) ? safe2((paramTEs: string[], returnTE: string) => makeOk([...paramTEs, '->', returnTE]))
                             (unparseTuple(x.paramTEs), unparseTExp(x.returnTE)) :
+        isEmptyTupleTExp(x) ? unparseTuple([]) :
+        isNonEmptyTupleTExp(x) ? unparseTuple(x.TEs) :
         makeFailure("Never");
     const unparsed = up(te);
     return bind(unparsed,
@@ -245,7 +259,9 @@ const matchTVarsInTE = <T1, T2>(te1: TExp, te2: TExp,
     (isTVar(te1) || isTVar(te2)) ? matchTVarsinTVars(tvarDeref(te1), tvarDeref(te2), succ, fail) :
     (isAtomicTExp(te1) || isAtomicTExp(te2)) ?
         ((isAtomicTExp(te1) && isAtomicTExp(te2) && eqAtomicTExp(te1, te2)) ? succ([]) : fail()) :
-    matchTVarsInTProcs(te1, te2, succ, fail);
+    
+    (isProcTExp(te1) || isProcTExp(te2)) ? matchTVarsInTProcs(te1, te2, succ, fail) :
+    matchTVarsInTuplesTExps(te1, te2, succ, fail);
 
 // te1 and te2 are the result of tvarDeref
 const matchTVarsinTVars = <T1, T2>(te1: TExp, te2: TExp,
@@ -259,6 +275,13 @@ const matchTVarsInTProcs = <T1, T2>(te1: TExp, te2: TExp,
         succ: (mapping: Array<Pair<TVar, TVar>>) => T1,
         fail: () => T2): T1 | T2 =>
     (isProcTExp(te1) && isProcTExp(te2)) ? matchTVarsInTEs(procTExpComponents(te1), procTExpComponents(te2), succ, fail) :
+    fail();
+
+const matchTVarsInTuplesTExps = <T1, T2>(te1: TExp, te2: TExp,
+        succ: (mapping: Array<Pair<TVar, TVar>>) => T1,
+        fail: () => T2): T1 | T2 =>
+    (isEmptyTupleTExp(te1) && isEmptyTupleTExp(te2)) ? succ([]) :
+    (isNonEmptyTupleTExp(te1) && isNonEmptyTupleTExp(te2)) ? matchTVarsInTEs(te1.TEs, te2.TEs, succ, fail) :
     fail();
 
 const matchTVarsInTEs = <T1, T2>(te1: TExp[], te2: TExp[],
