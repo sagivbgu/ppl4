@@ -1,9 +1,10 @@
 import { expect } from "chai";
 import { isNumExp, isBoolExp, isVarRef, isPrimOp, isProgram, isDefineExp, isVarDecl,
          isAppExp, isStrExp, isIfExp, isProcExp, isLetExp, isLitExp, isLetrecExp, isSetExp,
-         parseL5Exp, unparse, Exp, parseL5 } from "../../part2/L5-ast";
+         parseL5Exp, unparse, Exp, parseL5, isLetvaluesExp, makeLetvaluesExp, makeIfExp, makeVarRef, makeAppExp, makePrimOp, makeNumExp, makeValuesBinding, makeVarDecl, makeBoolExp } from "../../part2/L5-ast";
 import { Result, bind, isOkT, makeOk } from "../../shared/result";
 import { parse as parseSexp } from "../../shared/parser";
+import { makeFreshTVar, makeBoolTExp, makeNumTExp } from "../../part2/TExp";
 
 const p = (x: string): Result<Exp> => bind(parseSexp(x), parseL5Exp);
 
@@ -18,6 +19,7 @@ describe('L5 Parser', () => {
         expect(p("string=?")).to.satisfy(isOkT(isPrimOp));
         expect(p("eq?")).to.satisfy(isOkT(isPrimOp));
         expect(p("cons")).to.satisfy(isOkT(isPrimOp));
+        expect(p("values")).to.satisfy(isOkT(isPrimOp));
     });
 
     it('parses programs', () => {
@@ -82,6 +84,32 @@ describe('L5 Parser', () => {
     it('parses "set!" expressions', () => {
         expect(p("(set! x 1)")).to.satisfy(isOkT(isSetExp));
     });
+
+    it('parses "let-values" expressions', () => {
+        expect(p("(let-values (((a b c) (values #t 2 5)) ((x y) (values 3 4))) (if a 0 (+ x y b c)))")).to.satisfy(isOkT(isLetvaluesExp));
+        expect(p("(let-values (((a b c) (values #t 2 5)) ((x y) (values 3 4))) (if a 0 (+ x y b c)))")).to.deep.equal(
+            makeOk(
+            makeLetvaluesExp(
+                [makeValuesBinding([makeVarDecl("a", makeFreshTVar()), makeVarDecl("b", makeFreshTVar()), makeVarDecl("c", makeFreshTVar())],
+                    makeAppExp(makePrimOp("values"), [makeBoolExp(true), makeNumExp(2), makeNumExp(5)])),
+                makeValuesBinding([makeVarDecl("x", makeFreshTVar()), makeVarDecl("y", makeFreshTVar())],
+                    makeAppExp(makePrimOp("values"), [makeNumExp(3), makeNumExp(4)]))],
+                [makeIfExp(makeVarRef("a"), makeNumExp(0), makeAppExp(makePrimOp("+"), [makeVarRef("x"), makeVarRef("y"), makeVarRef("b"), makeVarRef("c")]))])
+        ));
+    });
+
+    it('parses "let-values" expressions with type annotations', () => {
+        expect(p("(let-values ((( (a : boolean) (b : number) (c : number)) (values #t 2 5)) (((x : number) (y : number)) (values 3 4))) (if a 0 (+ x y b c)))")).to.satisfy(isOkT(isLetvaluesExp));
+        expect(p("(let-values ((( (a : boolean) (b : number) (c : number)) (values #t 2 5)) (((x : number) (y : number)) (values 3 4))) (if a 0 (+ x y b c)))")).to.deep.equal(
+            makeOk(
+            makeLetvaluesExp(
+                [makeValuesBinding([makeVarDecl("a", makeBoolTExp()), makeVarDecl("b", makeNumTExp()), makeVarDecl("c", makeNumTExp())],
+                    makeAppExp(makePrimOp("values"), [makeBoolExp(true), makeNumExp(2), makeNumExp(5)])),
+                makeValuesBinding([makeVarDecl("x", makeNumTExp()), makeVarDecl("y", makeNumTExp())],
+                    makeAppExp(makePrimOp("values"), [makeNumExp(3), makeNumExp(4)]))],
+                [makeIfExp(makeVarRef("a"), makeNumExp(0), makeAppExp(makePrimOp("+"), [makeVarRef("x"), makeVarRef("y"), makeVarRef("b"), makeVarRef("c")]))])
+        ));
+    });
 });
 
 describe('L5 Unparse', () => {
@@ -105,5 +133,15 @@ describe('L5 Unparse', () => {
     it('unparses "letrec" expressions', () => {
         const letrec = "(letrec (((p : (number * number -> number)) (lambda ((x : number) (y : number)) (+ x y)))) (p 1 2))";
         expect(roundTrip(letrec)).to.deep.equal(makeOk(letrec));
+    });
+
+    it('unparses "let-values" expressions with type annotations', () => {
+        const letvalues1 = "(let-values ((((a : boolean) (b : number) (c : number)) (values #t 2 5)) (((x : number) (y : number)) (values 3 4))) (if a 0 (+ x y b c)))";
+        expect(roundTrip(letvalues1)).to.deep.equal(makeOk(letvalues1));
+    });
+
+    it('unparses "let-values" expressions', () => {
+        const letvalues1 = "(let-values (((a b c) (values #t 2 5)) ((x y) (values 3 4))) (if a 0 (+ x y b c)))";
+        expect(roundTrip(letvalues1)).to.deep.equal(makeOk(letvalues1));
     });
 });
