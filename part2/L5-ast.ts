@@ -43,8 +43,8 @@ import { isArray, isString, isNumericString, isIdentifier } from "../shared/type
 //         |  ( letrec ( binding*) <cexp>+ )  / LetrecExp(bindings:Bindings[], body: CExp)
 //         |  ( let-values ( <values-binding>* ) <cexp>+ )  / LetvaluesExp(bindings:ValuesBinding[], body:CExp[]))
 //         |  ( set! <var> <cexp>)            / SetExp(var: varRef, val: CExp)
-// <binding>  ::= ( <var> <cexp> )            / Binding(var:VarDecl, val:Cexp)
-// <values-binding>  ::= ( ( <var>* ) <cexp> ) / ValuesBinding(vars:VarDecl[], val:Cexp)
+// <binding>  ::= ( <var-decl> <cexp> )            / Binding(var:VarDecl, val:Cexp)
+// <values-binding>  ::= ( ( <var-decl>* ) <cexp> ) / ValuesBinding(vars:VarDecl[], val:Cexp)
 // <prim-op>  ::= + | - | * | / | < | > | = | not |  eq? | string=?
 //                  | cons | car | cdr | values | list? | number?
 //                  | boolean? | symbol? | string?
@@ -52,7 +52,7 @@ import { isArray, isString, isNumericString, isIdentifier } from "../shared/type
 // <num-exp>  ::= a number token
 // <bool-exp> ::= #t | #f
 // <var-ref>  ::= an identifier token         / VarRef(var)
-// <var-decl> ::= an identifier token | (var : TExp) / VarRef(var, TE: TExp) ##### L5
+// <var-decl> ::= an identifier token | (var : TExp) / VarDecl(var:string, texp: TExp) ##### L5
 // <sexp>     ::= symbol | number | bool | string | ( <sexp>* )              ##### L3
 */
 
