@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { braid } from './part3';
+import { braid } from '../../part3/part3';
 
 // Gil's implementation from the forum
 function take(n: number, g: Generator) {

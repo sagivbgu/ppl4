@@ -1,5 +1,5 @@
 import { expect, assert } from 'chai';
-import { slower } from './part4';
+import { slower } from '../../part4/part4';
 
 const getFastPromise = () => Promise.resolve("fast");
 

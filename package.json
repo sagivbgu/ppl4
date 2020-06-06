@@ -4,7 +4,7 @@
   "description": "HW4 \"Principles of Programming Languages\" 2020 BGU",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --require ts-node/register */*.test.ts",
+    "test": "mocha --require ts-node/register test/**/*.test.ts",
     "coverage": "nyc --reporter=html npm test"
   },
   "keywords": [],
