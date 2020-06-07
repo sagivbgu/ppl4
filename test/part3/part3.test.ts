@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { braid } from '../../part3/part3';
+import { braid, biased } from '../../part3/part3';
 
 // Gil's implementation from the forum
 function take(n: number, g: Generator) {
@@ -74,6 +74,66 @@ describe('braid tests', () => {
     it('2 inner generators can be "empty"', () => {
         function* gEmpty() { }
         const { value, done } = braid(gEmpty, gEmpty).next();
+        expect(value)
+            .to.deep.equal(undefined);
+
+        expect(done)
+            .to.deep.equal(true);
+    });
+});
+
+describe('biased tests', () => {
+    it('assignment example', () => {
+        expect(take(4, biased(gen1, gen2)))
+            .to.deep.equal([3, 6, 8, 9]);
+    });
+    
+    it('take all elements', () => {
+        expect(take(6, biased(gen1, gen2)))
+            .to.deep.equal([3, 6, 8, 9, 12, 10]);
+    });
+    
+    it('take all elements from the list that did not end', () => {
+        expect(take(6, biased(gen1, gen2)))
+            .to.deep.equal([3, 6, 8, 9, 12, 10]);
+
+        expect(take(6, biased(gen2, gen1)))
+            .to.deep.equal([8, 10, 3, 6, 9, 12]);
+    });
+    
+    it('done when 2 given generators are done', () => {
+        expect(countIterations(biased(gen1, gen2)))
+            .to.deep.equal(6);
+
+        expect(countIterations(biased(gen2, gen1)))
+            .to.deep.equal(6);
+    });
+    
+    it('inner generator can return undefined but still not done', () => {
+        function* g1() { yield 1; yield undefined; yield 2; }
+        function* g2() { yield undefined; yield undefined; }
+
+        expect(take(10000, biased(g1, g2)))
+            .to.deep.equal([1, undefined, undefined, 2, undefined]);
+
+        expect(take(10000, biased(g2, g1)))
+            .to.deep.equal([undefined, undefined, 1, undefined, 2]);
+    });
+    
+    it('inner generator can be "empty"', () => {
+        function* g1() { yield 1; }
+        function* gEmpty() { }
+
+        expect(take(10000, biased(g1, gEmpty)))
+            .to.deep.equal([1]);
+
+        expect(take(10000, biased(gEmpty, g1)))
+            .to.deep.equal([1]);
+    });
+    
+    it('2 inner generators can be "empty"', () => {
+        function* gEmpty() { }
+        const { value, done } = biased(gEmpty, gEmpty).next();
         expect(value)
             .to.deep.equal(undefined);
 
