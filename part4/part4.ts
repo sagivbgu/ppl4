@@ -1,5 +1,45 @@
 import { KeyValuePair } from "ramda";
 
+// Part 4 ; Q1.a
+export const divisionByZero = new Error("Division By Zero");
+
+export function f(x: number): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+        x = +x;
+        if (!x) {
+            reject(divisionByZero);
+        } else {
+            resolve(1 / x);
+        }
+    });
+}
+
+export function g(x: number): Promise<number> {
+    let res: number = Number.MIN_SAFE_INTEGER ;
+
+    return new Promise<number>((resolve, reject) => {
+        try {
+            res = x * x;
+
+        } catch(err) {
+            reject(err);
+
+        }
+
+        resolve(res);
+    });
+}
+
+export function h(x: number): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+       g(x)
+        .then((x) => f(x) )
+        .then((x) => resolve(x) )
+        .catch((err) => reject(err) );
+    });
+}
+
+// Part 4 ; Q2
 export type SlowerResult<T> = KeyValuePair<number, T>;
 
 const wrapPromise = <T>(promise: Promise<T>, index: number): Promise<SlowerResult<T>> =>

@@ -1,5 +1,5 @@
 import { expect, assert } from 'chai';
-import { slower } from '../../part4/part4';
+import { slower, f, g, h, divisionByZero } from '../../part4/part4';
 
 const getFastPromise = () => Promise.resolve("fast");
 
@@ -112,4 +112,22 @@ describe('slower tests', () => {
 
     //     expect(blocked).to.deep.equal(false);
     // });
+});
+
+describe('f g h tests', () => {
+    it('h(5) = f(g(5)) = 1/(5*5) = 1/25', async () => {
+        let res = await h(5);
+        expect(res).to.deep.equal(1/(5*5));
+    });
+
+    it('h(0) = f(g(0)) = 1/(0*0) = error', async () => {
+        try {
+            await h(0);
+        }
+        catch (err) {
+            expect(err).to.deep.equal(divisionByZero);
+            return;
+        }
+        assert.fail("Must handle error");
+    });
 });
