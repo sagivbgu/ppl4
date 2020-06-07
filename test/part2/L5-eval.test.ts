@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { isVarDecl, isVarRef, parseL5 } from '../../part2/L5-ast';
 import { evalParse, evalProgram } from '../../part2/L5-eval';
-import { makeEmptySExp, makeSymbolSExp } from '../../part2/L5-value';
+import { makeEmptySExp, makeSymbolSExp, makeTuple } from '../../part2/L5-value';
 import { isClosure, makeCompoundSExp } from '../../part2/L5-value';
 import { makeOk, bind, isOkT, isFailure } from '../../shared/result';
 
@@ -208,4 +208,44 @@ describe('L5 Eval', () => {
             (letrec (((p : (number * number -> number)) (lambda ((x : number) (y : number)) (+ x y))))
                 (p 1 2))`)).to.deep.equal(makeOk(3));
     });
+});
+
+describe('Assignment 4', () => {
+    it('evaluate values as primOp', () => {
+        expect(evalParse("(values 1 2 3)")).to.deep.equal(makeOk(makeTuple([1,2,3])));
+    });
+
+    it('let-values: vars and vals size not match in bindings 1', () => {
+        expect(evalParse("(let-values (((a b c) (values #t 2 5 6)) (+ b c)")).to.satisfy(isFailure);
+        expect(evalParse("(let-values (((a b c) (values #t 2)) (+ b c)")).to.satisfy(isFailure);
+    });
+
+    it('let-values: check empty', () => {
+        expect(evalParse("(let-values (((a b c) ()) (+ b c)")).to.satisfy(isFailure);
+        expect(evalParse("(let-values ((() (values #t 2 5)) (+ b c)")).to.satisfy(isFailure);
+    });
+
+    it('let-values happy flow', () => {
+        expect(evalParse("(let-values (((a b c) (values #t 2 5)) ((x y) (values 3 4))) (if a 0 (+ x y b c)))")).to.deep.equal(makeOk(0));
+        expect(evalParse("(let-values (((a b c) (values #f 2 5)) ((x y) (values 3 4))) (if a 0 (+ x y b c)))")).to.deep.equal(makeOk(14));
+    });
+
+    it('let-values: malformed', () => {
+        expect(evalParse("(let-values x x)")).to.satisfy(isFailure);
+        expect(evalParse("(let-values (x y) x)")).to.satisfy(isFailure);
+        expect(evalParse("(let-values ((1 y)) x)")).to.satisfy(isFailure);
+    });
+
+    it('let-values: properly captures variables in closures', () => {
+        expect(bind(parseL5(`
+                (L5 (define makeCounter (lambda () (let-values (((c) (values 0))) (lambda () (set! c (+ c 1)) c))))
+                    (define c1 (makeCounter))
+                    (define c2 (makeCounter))
+                    (+ (+ (c1) (c1)) (+ (c2) (c2))))`), evalProgram)).to.deep.equal(makeOk(6));
+    });
+
+    it('let-values: evaluates type-annotated expressions', () => {
+        expect(evalParse("(let-values ((((a : boolean) (b : number)) (values #t 2))) (if a b (+ b b)))")).to.deep.equal(makeOk(2))
+    });
+    
 });

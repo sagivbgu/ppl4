@@ -1,7 +1,7 @@
 // L5-eval-box
 
-import { map, repeat, zipWith } from "ramda";
-import { CExp, Exp, IfExp, LetrecExp, LetExp, ProcExp, Program, SetExp, isCExp } from './L5-ast';
+import { map, repeat, zipWith, chain } from "ramda";
+import { CExp, Exp, IfExp, LetrecExp, LetExp, ProcExp, Program, SetExp, isCExp, isLetvaluesExp, LetvaluesExp, ValuesBinding } from './L5-ast';
 import { Binding, VarDecl } from "./L5-ast";
 import { isBoolExp, isLitExp, isNumExp, isPrimOp, isStrExp, isVarRef } from "./L5-ast";
 import { parseL5Exp } from "./L5-ast";
@@ -9,12 +9,11 @@ import { isAppExp, isDefineExp, isIfExp, isLetrecExp, isLetExp,
          isProcExp, isSetExp } from "./L5-ast";
 import { applyEnv, applyEnvBdg, globalEnvAddBinding, makeExtEnv, setFBinding,
          theGlobalEnv, Env, FBinding } from "./L5-env";
-import { isClosure, makeClosure, Closure, Value } from "./L5-value";
+import { isClosure, makeClosure, Closure, Value, SExpValue, isTuple } from "./L5-value";
 import { isEmpty, first, rest } from '../shared/list';
 import { Result, makeOk, makeFailure, mapResult, safe2, bind } from "../shared/result";
 import { parse as p } from "../shared/parser";
 import { applyPrimitive } from "./evalPrimitive";
-
 // ========================================================
 // Eval functions
 
@@ -30,6 +29,7 @@ export const applicativeEval = (exp: CExp, env: Env): Result<Value> =>
     isLetExp(exp) ? evalLet(exp, env) :
     isLetrecExp(exp) ? evalLetrec(exp, env) :
     isSetExp(exp) ? evalSet(exp, env) :
+    isLetvaluesExp(exp) ? evalLetValues(exp, env) :
     isAppExp(exp) ? safe2((proc: Value, args: Value[]) => applyProcedure(proc, args))
                         (applicativeEval(exp.rator, env), mapResult(rand => applicativeEval(rand, env), exp.rands)) :
     makeFailure(`Bad L5 AST ${exp}`);
@@ -91,6 +91,41 @@ const evalLet = (exp: LetExp, env: Env): Result<Value> => {
     const vals = mapResult((v : CExp) => applicativeEval(v, env), map((b : Binding) => b.val, exp.bindings));
     const vars = map((b: Binding) => b.var.var, exp.bindings);
     return bind(vals, (vals: Value[]) => evalSequence(exp.body, makeExtEnv(vars, vals, env)));
+}
+
+// LET-VALUES
+// compute the values, extend the env, eval the body.
+const evalLetValues = (exp: LetvaluesExp, env: Env): Result<Value> => {
+    // compute the values
+    const listOfRawVals = map((b: ValuesBinding) => b.val, exp.bindings)
+    const evalVals = mapResult((v: CExp) => applicativeEval(v, env), listOfRawVals);
+    const extractTuple = (v: SExpValue): Result<SExpValue[]> => 
+        isTuple(v) ? makeOk(v.vals) : makeFailure(`Let-Values got non tuple value: ${JSON.stringify(v)}`)
+    const tupleVals = bind(evalVals, (vals: SExpValue[]) => mapResult(extractTuple, vals))
+    
+    // extract the vars
+    const listOfVars = makeOk(map((b: ValuesBinding) => b.vars, exp.bindings));
+
+    // check equal size
+    const isEqualSize = (l: VarDecl[], r: SExpValue[]): boolean => l.length === r.length;
+    const checkEqualSize = (vars: VarDecl[][], vals: SExpValue[][]): Result<boolean[]> => 
+        mapResult((l: VarDecl[]) =>
+                    isEqualSize(l, vals[vars.indexOf(l)]) ?
+                    makeOk(true) : 
+                    makeFailure(`size mismatch: ${l} <-> ${vals[vars.indexOf(l)]}`)
+                    , vars)
+
+    // flat vars and vals
+    const flatVars = (vars: VarDecl[][]): string[] => 
+        chain((x) => map((v: VarDecl) => v.var, x), vars);
+
+    const flatVals = (vals: SExpValue[][]): SExpValue[] => chain((x) => x, vals);
+
+    // extendEvn and eval the body
+    return safe2((vars: VarDecl[][], vals: SExpValue[][]): Result<Value> => 
+            bind(checkEqualSize(vars, vals), _ =>
+            evalSequence(exp.body, makeExtEnv(flatVars(vars), flatVals(vals), env))))
+        (listOfVars, tupleVals);
 }
 
 // LETREC: Direct evaluation rule without syntax expansion
