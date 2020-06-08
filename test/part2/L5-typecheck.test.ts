@@ -2,8 +2,8 @@ import { expect } from 'chai';
 import { parseL5Exp, Exp } from '../../part2/L5-ast';
 import { typeofExp, L5typeof } from '../../part2/L5-typecheck';
 import { makeEmptyTEnv, makeExtendTEnv } from '../../part2/TEnv';
-import { makeBoolTExp, makeNumTExp, makeProcTExp, makeTVar, makeVoidTExp, parseTE, unparseTExp } from '../../part2/TExp';
-import { makeOk, bind } from '../../shared/result';
+import { makeBoolTExp, makeNumTExp, makeProcTExp, makeTVar, makeVoidTExp, parseTE, unparseTExp, makeEmptyTupleTExp, makeNonEmptyTupleTExp } from '../../part2/TExp';
+import { makeOk, bind, isFailure } from '../../shared/result';
 import { parse as p } from "../../shared/parser";
 
 describe('L5 Type Checker', () => {
@@ -148,5 +148,50 @@ describe('L5 Type Checker', () => {
                                          (lambda ((x : T1)) : (T1 -> number)
                                            (lambda((y : T1)) : number 5)))`)).to.deep.equal(makeOk("void"));
         });
+    });
+
+    describe('Assignment 4', () => {
+        it('parse empty tuple', () => {
+            expect(parseTE("()")).to.deep.equal(makeOk(makeEmptyTupleTExp()));
+        });
+
+        it('parse non-empty tuple', () => {
+            expect(parseTE("(number * number)")).to.deep.equal(makeOk(makeNonEmptyTupleTExp([makeNumTExp(), makeNumTExp()])));
+            expect(parseTE("(number * boolean)")).to.deep.equal(makeOk(makeNonEmptyTupleTExp([makeNumTExp(), makeBoolTExp()])));
+        });
+
+        it('unparses tuples', () => {
+            expect(unparseTExp(makeNonEmptyTupleTExp([makeTVar("T"), makeTVar("T"), makeBoolTExp()]))).to.deep.equal(makeOk("(T * T * boolean)"));
+            expect(unparseTExp(makeNonEmptyTupleTExp([makeNumTExp(), makeProcTExp([makeNumTExp()], makeNumTExp())]))).to.deep.equal(makeOk("(number * (number -> number))"));
+        });
+
+        it('returns the types of values PrimOp (non empty)', () => {
+            expect(L5typeof("(values 1 2)")).to.deep.equal(makeOk("(number * number)"));
+            expect(L5typeof("(values #t +)")).to.deep.equal(makeOk("(boolean * (number * number -> number))"));
+        });
+
+        it('returns the types of values PrimOp (empty)', () => {
+            expect(L5typeof("(values)")).to.deep.equal(makeOk("(Empty)"));
+        });
+
+        it('returns the types of let-values', () => {
+            expect(L5typeof("(let-values ((((a : boolean) (b : number) (c : number)) (values #t 2 5)) (((x : number) (y : number)) (values 1 7))) (if a 0 (+ b c)))")).to.deep.equal(makeOk("number"));
+        });
+
+        it('fail to return the type of let-values (types dont match)', () => {
+            expect(L5typeof("(let-values ((((a : number) (b : number) (c : number)) (values #t 2 5)) (((x : number) (y : number)) (values 1 7))) (if a 0 (+ b c)))")).to.satisfy(isFailure);
+        });
+
+        it('fail to return the type of let-values (size does not match)', () => {
+            expect(L5typeof("(let-values ((((a : boolean) (b : number) (c : number)) (values #t 2 5 6)) (((x : number) (y : number)) (values 1 7))) (if a 0 (+ b c)))")).to.satisfy(isFailure);
+            expect(L5typeof("(let-values ((((a : boolean) (b : number) (c : number)) (values #t)) (((x : number) (y : number)) (values 1 7))) (if a 0 (+ b c)))")).to.satisfy(isFailure);
+            expect(L5typeof("(let-values ((((a : boolean) (b : number) (c : number)) (values)) (((x : number) (y : number)) (values 1 7))) (if a 0 (+ b c)))")).to.satisfy(isFailure);
+            expect(L5typeof("(let-values ((() (values #t 2 5 6)) (((x : number) (y : number)) (values 1 7))) (if a 0 (+ b c)))")).to.satisfy(isFailure);
+        });
+
+        it('return the type of let-values (with empty tuple)', () => {
+            expect(L5typeof("(let-values ((() (values)) (((x : number) (y : number)) (values 1 7))) (if #f 0 (+ x y)))")).to.deep.equal(makeOk("number"));
+        });
+
     });
 });

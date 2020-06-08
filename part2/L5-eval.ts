@@ -112,7 +112,7 @@ const evalLetValues = (exp: LetvaluesExp, env: Env): Result<Value> => {
         mapResult((l: VarDecl[]) =>
                     isEqualSize(l, vals[vars.indexOf(l)]) ?
                     makeOk(true) : 
-                    makeFailure(`size mismatch: ${l} <-> ${vals[vars.indexOf(l)]}`)
+                    makeFailure(`size doesn't match: ${l} <-> ${vals[vars.indexOf(l)]}`)
                     , vars)
 
     // flat vars and vals

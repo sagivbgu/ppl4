@@ -1,16 +1,16 @@
 // L5-typecheck
 // ========================================================
-import { equals, map, zipWith } from 'ramda';
+import { equals, map, zipWith, join, chain } from 'ramda';
 import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLetrecExp, isLetExp, isNumExp,
          isPrimOp, isProcExp, isProgram, isStrExp, isVarRef, parseL5Exp, unparse,
-         AppExp, BoolExp, DefineExp, Exp, IfExp, LetrecExp, LetExp, NumExp,
-         Parsed, PrimOp, ProcExp, Program, StrExp } from "./L5-ast";
+         AppExp, BoolExp, DefineExp, Exp, IfExp, LetrecExp, LetExp, NumExp, VarDecl,
+         Parsed, PrimOp, ProcExp, Program, StrExp, isLetvaluesExp, LetvaluesExp, CExp, ValuesBinding } from "./L5-ast";
 import { applyTEnv, makeEmptyTEnv, makeExtendTEnv, TEnv } from "./TEnv";
 import { isProcTExp, makeBoolTExp, makeNumTExp, makeProcTExp, makeStrTExp, makeVoidTExp,
          parseTE, unparseTExp,
-         BoolTExp, NumTExp, StrTExp, TExp, VoidTExp } from "./TExp";
+         BoolTExp, NumTExp, StrTExp, TExp, VoidTExp, isTupleTExp, TupleTExp, isEmptyTupleTExp, isNonEmptyTupleTExp } from "./TExp";
 import { isEmpty, allT, first, rest } from '../shared/list';
-import { Result, makeFailure, bind, makeOk, safe3, safe2, zipWithResult } from '../shared/result';
+import { Result, makeFailure, bind, makeOk, safe3, safe2, zipWithResult, mapResult } from '../shared/result';
 import { parse as p } from "../shared/parser";
 
 // Purpose: Check that type expressions are equivalent
@@ -45,6 +45,7 @@ export const typeofExp = (exp: Parsed, tenv: TEnv): Result<TExp> =>
     isProcExp(exp) ? typeofProc(exp, tenv) :
     isAppExp(exp) ? typeofApp(exp, tenv) :
     isLetExp(exp) ? typeofLet(exp, tenv) :
+    isLetvaluesExp(exp) ? typeofLetvalues(exp, tenv) :
     isLetrecExp(exp) ? typeofLetrec(exp, tenv) :
     isDefineExp(exp) ? typeofDefine(exp, tenv) :
     isProgram(exp) ? typeofProgram(exp, tenv) :
@@ -87,6 +88,7 @@ export const typeofPrim = (p: PrimOp): Result<TExp> =>
     makeFailure(`Unknown primitive ${p.op}`);
 
 
+
 // Purpose: compute the type of an if-exp
 // Typing rule:
 //   if type<test>(tenv) = boolean
@@ -116,14 +118,21 @@ export const typeofProc = (proc: ProcExp, tenv: TEnv): Result<TExp> => {
 
 // Purpose: compute the type of an app-exp
 // Typing rule:
-// If   type<rator>(tenv) = (t1*..*tn -> t)
+// If PrimOp === "values" -> typeOfValues
+// Elif type<rator>(tenv) = (t1*..*tn -> t)
 //      type<rand1>(tenv) = t1
 //      ...
 //      type<randn>(tenv) = tn
 // then type<(rator rand1...randn)>(tenv) = t
 // We also check the correct number of arguments is passed.
-export const typeofApp = (app: AppExp, tenv: TEnv): Result<TExp> =>
-    bind(typeofExp(app.rator, tenv), (ratorTE: TExp) => {
+export const typeofApp = (app: AppExp, tenv: TEnv): Result<TExp> => {
+    // Diffrent typing rule for "values" PrimOp
+    if (isPrimOp(app.rator) && app.rator.op === "values") { 
+        return typeOfValues(app.rands, tenv);
+    }
+
+    // Original typing rule for AppExps
+    return bind(typeofExp(app.rator, tenv), (ratorTE: TExp) => {
         if (! isProcTExp(ratorTE)) {
             return safe2((rator: string, exp: string) => makeFailure<TExp>(`Application of non-procedure: ${rator} in ${exp}`))
                     (unparseTExp(ratorTE), unparse(app));
@@ -135,7 +144,31 @@ export const typeofApp = (app: AppExp, tenv: TEnv): Result<TExp> =>
                                                                 (typeOfRand: TExp) => checkEqualType(typeOfRand, trand, app)),
                                           app.rands, ratorTE.paramTEs);
         return bind(constraints, _ => makeOk(ratorTE.returnTE));
-    });
+        
+    }) };
+
+// Purpose: compute the type of an app-exp when PrimOp is "values"
+//          (dealing with unknown number and type of rands)
+// Typing rule:
+// If   type<rand1>(tenv) = t1
+//      ...
+//      type<randn>(tenv) = tn
+// then type<(values rand1...randn)>(tenv) = (t1 * ... * tn)
+const typeOfValues = (rands: CExp[], tenv: TEnv): Result<TExp> => {
+    // Compute the type of each rand, and unparse it to string
+    const typeOfRands = mapResult((rand: CExp) => typeofExp(rand, tenv), rands);
+    const unparsedRands = (texps: TExp[]): Result<string[]> => 
+        mapResult((t: TExp) => unparseTExp(t), texps); 
+    const unparsedTypesOfRands = bind(typeOfRands, unparsedRands);
+
+    // join them in the format (t1 * ... * tn)
+    const joinStrings = (texps: string[]) => makeOk(`(${join(" * ", texps)})`)
+    const joinedStrings = bind(unparsedTypesOfRands, joinStrings);
+
+    // parse the string 
+    return bind(joinedStrings, parseTE);
+}
+
 
 // Purpose: compute the type of a let-exp
 // Typing rule:
@@ -154,6 +187,53 @@ export const typeofLet = (exp: LetExp, tenv: TEnv): Result<TExp> => {
     return bind(constraints, _ => typeofExps(exp.body, makeExtendTEnv(vars, varTEs, tenv)));
 };
 
+// Purpose: compute the type of a let-values-exp
+// Typing rule:
+// If   type<(val11 * val12 * ... * val1n)>(tenv) = (t11 * t12 * ... * t1n)
+//      ...
+//      type<(valn1 * valn2 * ... * valnn)>(tenv) = (tn1 * tn2 * ... * tnn)
+//      type<body>(extend-tenv(var11=t11,..,varnn=tnn; tenv)) = t
+// then type<let-values (((var11 .. var1n) (val1 .. val1n)) .. ((varn1 .. varnn) (van1 .. valnn))) body>(tenv) = t
+export const typeofLetvalues = (exp: LetvaluesExp, tenv: TEnv): Result<TExp> => {
+    // parse types of vals and check if they are all tuples
+    const listOfVals = map((b: ValuesBinding) => b.val, exp.bindings);
+    const valsTExps = mapResult((val: CExp) => typeofExp(val, tenv), listOfVals);
+    const valsAllTuplesTEss = bind(valsTExps, (texps: TExp[]): Result<TExp[][]> => 
+            mapResult((t: TExp) => isTupleTExp(t) ? isEmptyTupleTExp(t) ? makeOk([]) : makeOk(t.TEs) : 
+                                    makeFailure(`${unparseTExp(t)} is not a tuple`), texps));
+
+    // get vars
+    const listOfVars = map((b: ValuesBinding) => b.vars, exp.bindings);
+    const varTEss = map((vars) => map((v) => v.texp, vars), listOfVars);
+    
+    // check equal size
+    const checkEqualSize = bind(valsAllTuplesTEss, (vals: TExp[][]) => 
+        bind(mapResult((vars: TExp[]) => {
+            const matchingVal = vals[varTEss.indexOf(vars)];
+            return vars.length === matchingVal.length ? makeOk(true) :
+            makeFailure(`size does not match ${vars} <-> ${vals}`);
+        }, varTEss), _ => makeOk(vals)));
+    
+    // for each varTEs, chcek if the type is equal to valTEs
+    const constraints = (varTEs: TExp[], valTEs: TExp[]) =>
+        zipWithResult((varTE, valTE) => checkEqualType(varTE, valTE, exp),
+            varTEs, valTEs);
+    
+    const allConstraints = bind(checkEqualSize, 
+        (valTEss: TExp[][]) => 
+            mapResult((varTEs: TExp[]) => 
+                constraints(varTEs, valTEss[varTEss.indexOf(varTEs)]), varTEss));
+    
+    // final
+    const flatVars = chain((x) => map((v: VarDecl) => v.var, x), listOfVars);
+    const flatVarTEs = chain((x) => x, varTEss);
+
+    return bind(allConstraints, _ => typeofExps(exp.body, makeExtendTEnv(flatVars, flatVarTEs, tenv)));
+
+}
+
+
+///////////////////////////////////////////////////////////////////
 // Purpose: compute the type of a letrec-exp
 // We make the same assumption as in L4 that letrec only binds proc values.
 // Typing rule:
