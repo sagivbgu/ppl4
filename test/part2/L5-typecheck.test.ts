@@ -155,6 +155,10 @@ describe('L5 Type Checker', () => {
             expect(parseTE("()")).to.deep.equal(makeOk(makeEmptyTupleTExp()));
         });
 
+        it('parse tuple with one type', () => {
+            expect(parseTE("(boolean)")).to.deep.equal(makeOk(makeNonEmptyTupleTExp([makeBoolTExp()])));
+        });
+
         it('parse non-empty tuple', () => {
             expect(parseTE("(number * number)")).to.deep.equal(makeOk(makeNonEmptyTupleTExp([makeNumTExp(), makeNumTExp()])));
             expect(parseTE("(number * boolean)")).to.deep.equal(makeOk(makeNonEmptyTupleTExp([makeNumTExp(), makeBoolTExp()])));
@@ -163,6 +167,10 @@ describe('L5 Type Checker', () => {
         it('unparses tuples', () => {
             expect(unparseTExp(makeNonEmptyTupleTExp([makeTVar("T"), makeTVar("T"), makeBoolTExp()]))).to.deep.equal(makeOk("(T * T * boolean)"));
             expect(unparseTExp(makeNonEmptyTupleTExp([makeNumTExp(), makeProcTExp([makeNumTExp()], makeNumTExp())]))).to.deep.equal(makeOk("(number * (number -> number))"));
+        });
+
+        it('unparse tuple with one type', () => {
+            expect(unparseTExp(makeNonEmptyTupleTExp([makeBoolTExp()]))).to.deep.equal(makeOk("(boolean)"));
         });
 
         it('returns the types of values PrimOp (non empty)', () => {
