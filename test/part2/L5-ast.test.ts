@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { isNumExp, isBoolExp, isVarRef, isPrimOp, isProgram, isDefineExp, isVarDecl,
          isAppExp, isStrExp, isIfExp, isProcExp, isLetExp, isLitExp, isLetrecExp, isSetExp,
-         parseL5Exp, unparse, Exp, parseL5, isLetvaluesExp, makeLetvaluesExp, makeIfExp, makeVarRef, makeAppExp, makePrimOp, makeNumExp, makeValuesBinding, makeVarDecl, makeBoolExp } from "../../part2/L5-ast";
+         parseL5Exp, unparse, Exp, parseL5, isLetValuesExp, makeLetValuesExp, makeIfExp, makeVarRef, makeAppExp, makePrimOp, makeNumExp, makeValuesBinding, makeVarDecl, makeBoolExp } from "../../part2/L5-ast";
 import { Result, bind, isOkT, makeOk } from "../../shared/result";
 import { parse as parseSexp } from "../../shared/parser";
 import { makeFreshTVar, makeBoolTExp, makeNumTExp } from "../../part2/TExp";
@@ -86,10 +86,10 @@ describe('L5 Parser', () => {
     });
 
     it('parses "let-values" expressions', () => {
-        expect(p("(let-values (((a b c) (values #t 2 5)) ((x y) (values 3 4))) (if a 0 (+ x y b c)))")).to.satisfy(isOkT(isLetvaluesExp));
+        expect(p("(let-values (((a b c) (values #t 2 5)) ((x y) (values 3 4))) (if a 0 (+ x y b c)))")).to.satisfy(isOkT(isLetValuesExp));
         expect(p("(let-values (((a b c) (values #t 2 5)) ((x y) (values 3 4))) (if a 0 (+ x y b c)))")).to.deep.equal(
             makeOk(
-            makeLetvaluesExp(
+            makeLetValuesExp(
                 [makeValuesBinding([makeVarDecl("a", makeFreshTVar()), makeVarDecl("b", makeFreshTVar()), makeVarDecl("c", makeFreshTVar())],
                     makeAppExp(makePrimOp("values"), [makeBoolExp(true), makeNumExp(2), makeNumExp(5)])),
                 makeValuesBinding([makeVarDecl("x", makeFreshTVar()), makeVarDecl("y", makeFreshTVar())],
@@ -99,10 +99,10 @@ describe('L5 Parser', () => {
     });
 
     it('parses "let-values" expressions with type annotations', () => {
-        expect(p("(let-values ((( (a : boolean) (b : number) (c : number)) (values #t 2 5)) (((x : number) (y : number)) (values 3 4))) (if a 0 (+ x y b c)))")).to.satisfy(isOkT(isLetvaluesExp));
+        expect(p("(let-values ((( (a : boolean) (b : number) (c : number)) (values #t 2 5)) (((x : number) (y : number)) (values 3 4))) (if a 0 (+ x y b c)))")).to.satisfy(isOkT(isLetValuesExp));
         expect(p("(let-values ((( (a : boolean) (b : number) (c : number)) (values #t 2 5)) (((x : number) (y : number)) (values 3 4))) (if a 0 (+ x y b c)))")).to.deep.equal(
             makeOk(
-            makeLetvaluesExp(
+            makeLetValuesExp(
                 [makeValuesBinding([makeVarDecl("a", makeBoolTExp()), makeVarDecl("b", makeNumTExp()), makeVarDecl("c", makeNumTExp())],
                     makeAppExp(makePrimOp("values"), [makeBoolExp(true), makeNumExp(2), makeNumExp(5)])),
                 makeValuesBinding([makeVarDecl("x", makeNumTExp()), makeVarDecl("y", makeNumTExp())],

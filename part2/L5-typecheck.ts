@@ -4,7 +4,7 @@ import { equals, map, zipWith, join, chain } from 'ramda';
 import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLetrecExp, isLetExp, isNumExp,
          isPrimOp, isProcExp, isProgram, isStrExp, isVarRef, parseL5Exp, unparse,
          AppExp, BoolExp, DefineExp, Exp, IfExp, LetrecExp, LetExp, NumExp, VarDecl,
-         Parsed, PrimOp, ProcExp, Program, StrExp, isLetvaluesExp, LetvaluesExp, CExp, ValuesBinding } from "./L5-ast";
+         Parsed, PrimOp, ProcExp, Program, StrExp, isLetValuesExp, LetValuesExp, CExp, ValuesBinding } from "./L5-ast";
 import { applyTEnv, makeEmptyTEnv, makeExtendTEnv, TEnv } from "./TEnv";
 import { isProcTExp, makeBoolTExp, makeNumTExp, makeProcTExp, makeStrTExp, makeVoidTExp,
          parseTE, unparseTExp,
@@ -45,7 +45,7 @@ export const typeofExp = (exp: Parsed, tenv: TEnv): Result<TExp> =>
     isProcExp(exp) ? typeofProc(exp, tenv) :
     isAppExp(exp) ? typeofApp(exp, tenv) :
     isLetExp(exp) ? typeofLet(exp, tenv) :
-    isLetvaluesExp(exp) ? typeofLetvalues(exp, tenv) :
+    isLetValuesExp(exp) ? typeofLetvalues(exp, tenv) :
     isLetrecExp(exp) ? typeofLetrec(exp, tenv) :
     isDefineExp(exp) ? typeofDefine(exp, tenv) :
     isProgram(exp) ? typeofProgram(exp, tenv) :
@@ -194,7 +194,7 @@ export const typeofLet = (exp: LetExp, tenv: TEnv): Result<TExp> => {
 //      type<(valn1 * valn2 * ... * valnn)>(tenv) = (tn1 * tn2 * ... * tnn)
 //      type<body>(extend-tenv(var11=t11,..,varnn=tnn; tenv)) = t
 // then type<let-values (((var11 .. var1n) (val1 .. val1n)) .. ((varn1 .. varnn) (van1 .. valnn))) body>(tenv) = t
-export const typeofLetvalues = (exp: LetvaluesExp, tenv: TEnv): Result<TExp> => {
+export const typeofLetvalues = (exp: LetValuesExp, tenv: TEnv): Result<TExp> => {
     // parse types of vals and check if they are all tuples
     const listOfVals = map((b: ValuesBinding) => b.val, exp.bindings);
     const valsTExps = mapResult((val: CExp) => typeofExp(val, tenv), listOfVals);

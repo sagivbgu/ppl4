@@ -1,7 +1,7 @@
 // L5-eval-box
 
 import { map, repeat, zipWith, chain } from "ramda";
-import { CExp, Exp, IfExp, LetrecExp, LetExp, ProcExp, Program, SetExp, isCExp, isLetvaluesExp, LetvaluesExp, ValuesBinding } from './L5-ast';
+import { CExp, Exp, IfExp, LetrecExp, LetExp, ProcExp, Program, SetExp, isCExp, isLetValuesExp, LetValuesExp, ValuesBinding } from './L5-ast';
 import { Binding, VarDecl } from "./L5-ast";
 import { isBoolExp, isLitExp, isNumExp, isPrimOp, isStrExp, isVarRef } from "./L5-ast";
 import { parseL5Exp } from "./L5-ast";
@@ -29,7 +29,7 @@ export const applicativeEval = (exp: CExp, env: Env): Result<Value> =>
     isLetExp(exp) ? evalLet(exp, env) :
     isLetrecExp(exp) ? evalLetrec(exp, env) :
     isSetExp(exp) ? evalSet(exp, env) :
-    isLetvaluesExp(exp) ? evalLetValues(exp, env) :
+    isLetValuesExp(exp) ? evalLetValues(exp, env) :
     isAppExp(exp) ? safe2((proc: Value, args: Value[]) => applyProcedure(proc, args))
                         (applicativeEval(exp.rator, env), mapResult(rand => applicativeEval(rand, env), exp.rands)) :
     makeFailure(`Bad L5 AST ${exp}`);
@@ -95,7 +95,7 @@ const evalLet = (exp: LetExp, env: Env): Result<Value> => {
 
 // LET-VALUES
 // compute the values, extend the env, eval the body.
-const evalLetValues = (exp: LetvaluesExp, env: Env): Result<Value> => {
+const evalLetValues = (exp: LetValuesExp, env: Env): Result<Value> => {
     // compute the values
     const listOfRawVals = map((b: ValuesBinding) => b.val, exp.bindings)
     const evalVals = mapResult((v: CExp) => applicativeEval(v, env), listOfRawVals);
