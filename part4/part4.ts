@@ -5,8 +5,7 @@ export const divisionByZero = new Error("Division By Zero");
 
 export function f(x: number): Promise<number> {
     return new Promise<number>((resolve, reject) => {
-        x = +x;
-        if (!x) {
+        if (x === 0) {
             reject(divisionByZero);
         } else {
             resolve(1 / x);
@@ -15,18 +14,12 @@ export function f(x: number): Promise<number> {
 }
 
 export function g(x: number): Promise<number> {
-    let res: number = Number.MIN_SAFE_INTEGER ;
-
     return new Promise<number>((resolve, reject) => {
         try {
-            res = x * x;
-
-        } catch(err) {
+            resolve(x * x);
+        } catch (err) {
             reject(err);
-
         }
-
-        resolve(res);
     });
 }
 
