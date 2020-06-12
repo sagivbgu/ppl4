@@ -1,9 +1,9 @@
 import { PrimOp } from "./L5-ast";
-import { Value, isSymbolSExp, isCompoundSExp, makeCompoundSExp, makeEmptySExp, isEmptySExp, CompoundSExp, EmptySExp, makeTuple } from "./L5-value";
+import { Value, isSymbolSExp, isCompoundSExp, makeCompoundSExp, makeEmptySExp, isEmptySExp, CompoundSExp, EmptySExp, makeTuple, Tuple, isTuple } from "./L5-value";
 import { Result, makeFailure, makeOk } from "../shared/result";
 import { allT, first, rest } from "../shared/list";
 import { isNumber, isString, isBoolean } from "../shared/type-predicates";
-import { reduce } from "ramda";
+import { reduce, any } from "ramda";
 
 export const applyPrimitive = (proc: PrimOp, args: Value[]): Result<Value> =>
     proc.op === "+" ? (allT(isNumber, args) ? makeOk(reduce((x, y) => x + y, 0, args)) : makeFailure("+ expects numbers only")) :
@@ -19,7 +19,7 @@ export const applyPrimitive = (proc: PrimOp, args: Value[]): Result<Value> =>
     proc.op === "cons" ? makeOk(consPrim(args[0], args[1])) :
     proc.op === "car" ? carPrim(args[0]) :
     proc.op === "cdr" ? cdrPrim(args[0]) :
-    proc.op === "values" ? makeOk(makeTuple(args)) :
+    proc.op === "values" ? valuesPrim(args) :
     proc.op === "list" ? makeOk(listPrim(args)) :
     proc.op === "list?" ? makeOk(isListPrim(args[0])) :
     proc.op === "pair?" ? makeOk(isPairPrim(args[0])) :
@@ -29,6 +29,9 @@ export const applyPrimitive = (proc: PrimOp, args: Value[]): Result<Value> =>
     proc.op === "string?" ? makeOk(isString(args[0])) :
     // display, newline
     makeFailure("Bad primitive op " + proc.op);
+
+const valuesPrim = (args: Value[]): Result<Tuple> => 
+    any(isTuple, args) ? makeFailure("Nested tuples are not allowed") : makeOk(makeTuple(args));
 
 const minusPrim = (args: Value[]): Result<number> => {
     // TODO complete

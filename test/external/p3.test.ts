@@ -4,7 +4,7 @@ import { biased, braid } from '../../part3/part3';
 
 describe('generators q1', () => {
     // what to do when one ends - https://www.cs.bgu.ac.il/~ppl202/Forum_Ex_4?action=show-thread&id=63dc415429ea86d213449c0d6b0a574f
-    /*it('example from assaginment', () => {
+    it('example from assaginment', () => {
         function* gen1() {
             yield 3;
             yield 6;
@@ -32,7 +32,7 @@ describe('generators q1', () => {
                 yield arr[i];
             }
         }
-        const gen = braid(gen1(g1), gen1(g2));
+        const gen = braid(() => gen1(g1), () => gen1(g2));
         for (let i in range(0, 5)) {
             expect(gen.next()).to.deep.equal({ value: g1[i], done: false });
             expect(gen.next()).to.deep.equal({ value: g2[i], done: false });
@@ -50,7 +50,7 @@ describe('generators q1', () => {
                 yield arr[i];
             }
         };
-        const gen = braid(gen1(), gen2(g1));
+        const gen = braid(gen1, () => gen2(g1));
         for (let i in range(0, 5)) {
             expect(gen.next()).to.deep.equal({ value: g1[i], done: false });
         }
@@ -64,7 +64,7 @@ describe('generators q1', () => {
             }
         }
         function* gen2() { }
-        const gen = braid(gen1(g1), gen2());
+        const gen = braid(() => gen1(g1), gen2);
         for (let i in range(0, 5)) {
             expect(gen.next()).to.deep.equal({ value: g1[i], done: false });
         }
@@ -73,7 +73,7 @@ describe('generators q1', () => {
     it('what if both are empty', () => {
         function* gen1() { }
         function* gen2() { }
-        const gen = braid(gen1(), gen2());
+        const gen = braid(gen1, gen2);
         expect(gen.next()).to.deep.equal({ done: true, value: undefined });
     });
     it('take 3 - of the same size', () => {
@@ -84,7 +84,7 @@ describe('generators q1', () => {
                 yield arr[i];
             }
         }
-        const gen = braid(gen1(g1), gen1(g2));
+        const gen = braid(() => gen1(g1), () => gen1(g2));
         for (let i in range(0, 5)) {
             expect(gen.next()).to.deep.equal({ value: g1[i], done: false });
             expect(gen.next()).to.deep.equal({ value: g2[i], done: false });
@@ -99,7 +99,7 @@ describe('generators q1', () => {
                 yield arr[i];
             }
         }
-        const gen = braid(gen1(g1), gen1(g2));
+        const gen = braid(() => gen1(g1), () => gen1(g2));
 
         expect(gen.next()).to.deep.equal({ value: g1[0], done: false });
         expect(gen.next()).to.deep.equal({ value: g2[0], done: false });
@@ -117,7 +117,7 @@ describe('generators q1', () => {
                 yield arr[i];
             }
         }
-        const gen = braid(gen1(g1), gen1(g2));
+        const gen = braid(() => gen1(g1), () => gen1(g2));
 
         expect(gen.next()).to.deep.equal({ value: g1[0], done: false });
         expect(gen.next()).to.deep.equal({ value: g2[0], done: false });
@@ -135,7 +135,7 @@ describe('generators q1', () => {
                 yield arr[i];
             }
         }
-        const gen = braid(gen1(g1), gen1(g2));
+        const gen = braid(() => gen1(g1), () => gen1(g2));
 
         expect(gen.next()).to.deep.equal({ value: g1[0], done: false });
         expect(gen.next()).to.deep.equal({ value: g2[0], done: false });
@@ -144,11 +144,11 @@ describe('generators q1', () => {
             expect(gen.next()).to.deep.equal({ value: g1[1 + Number(i)], done: false });
         }
         expect(gen.next()).to.deep.equal({ done: true, value: undefined });
-    })*/
+    })
 });
 
 describe('generators q2', () => {
-    /*it('example from assaginment', () => {
+    it('example from assaginment', () => {
         function* gen1() {
             yield 3;
             yield 6;
@@ -159,7 +159,7 @@ describe('generators q2', () => {
             yield 8;
             yield 10;
         }
-        const gen = biased(gen1(), gen2());
+        const gen = biased(gen1, gen2);
         expect(gen.next()).to.deep.equal({ value: 3, done: false });
         expect(gen.next()).to.deep.equal({ value: 6, done: false });
         expect(gen.next()).to.deep.equal({ value: 8, done: false });
@@ -177,7 +177,7 @@ describe('generators q2', () => {
                 yield arr[i];
             }
         }
-        const gen = biased(gen1(g1), gen1(g2));
+        const gen = biased(() => gen1(g1), () => gen1(g2));
         for (let i in range(0, 2)) {
             expect(gen.next()).to.deep.equal({ value: g1[Number(i) * 2], done: false });
             expect(gen.next()).to.deep.equal({ value: g1[Number(i) * 2 + 1], done: false });
@@ -197,7 +197,7 @@ describe('generators q2', () => {
                 yield arr[i];
             }
         };
-        const gen = biased(gen1(), gen2(g1));
+        const gen = biased(gen1, () => gen2(g1));
         for (let i in range(0, 5)) {
             expect(gen.next()).to.deep.equal({ value: g1[i], done: false });
         }
@@ -211,7 +211,7 @@ describe('generators q2', () => {
             }
         }
         function* gen2() { }
-        const gen = biased(gen1(g1), gen2());
+        const gen = biased(() => gen1(g1), gen2);
         for (let i in range(0, 5)) {
             expect(gen.next()).to.deep.equal({ value: g1[i], done: false });
         }
@@ -220,7 +220,7 @@ describe('generators q2', () => {
     it('what if both are empty', () => {
         function* gen1() { }
         function* gen2() { }
-        const gen = biased(gen1(), gen2());
+        const gen = biased(gen1, gen2);
         expect(gen.next()).to.deep.equal({ done: true, value: undefined });
     });
     it('take 3 - of the same size (code-wise)', () => {
@@ -231,7 +231,7 @@ describe('generators q2', () => {
                 yield arr[i];
             }
         }
-        const gen = biased(gen1(g1), gen1(g2));
+        const gen = biased(() => gen1(g1), () => gen1(g2));
         for (let i in range(0, 3)) {
             expect(gen.next()).to.deep.equal({ value: g1[Number(i) * 2], done: false });
             expect(gen.next()).to.deep.equal({ value: g1[Number(i) * 2 + 1], done: false });
@@ -247,7 +247,7 @@ describe('generators q2', () => {
                 yield arr[i];
             }
         }
-        const gen = biased(gen1(g1), gen1(g2));
+        const gen = biased(() => gen1(g1), () => gen1(g2));
 
         expect(gen.next()).to.deep.equal({ value: g1[0], done: false });
         expect(gen.next()).to.deep.equal({ value: g1[1], done: false });
@@ -266,7 +266,7 @@ describe('generators q2', () => {
                 yield arr[i];
             }
         }
-        const gen = biased(gen1(g1), gen1(g2));
+        const gen = biased(() => gen1(g1), () => gen1(g2));
 
         expect(gen.next()).to.deep.equal({ value: g1[0], done: false });
         expect(gen.next()).to.deep.equal({ value: g1[1], done: false });
@@ -285,7 +285,7 @@ describe('generators q2', () => {
                 yield arr[i];
             }
         }
-        const gen = biased(gen1(g1), gen1(g2));
+        const gen = biased(() => gen1(g1), () => gen1(g2));
 
         expect(gen.next()).to.deep.equal({ value: g1[0], done: false });
         expect(gen.next()).to.deep.equal({ value: g1[1], done: false });
@@ -295,5 +295,5 @@ describe('generators q2', () => {
             expect(gen.next()).to.deep.equal({ value: g1[2 + Number(i)], done: false });
         }
         expect(gen.next()).to.deep.equal({ done: true, value: undefined });
-    })*/
+    })
 });

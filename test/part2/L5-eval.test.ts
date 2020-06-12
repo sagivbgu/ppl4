@@ -247,5 +247,21 @@ describe('Assignment 4', () => {
     it('let-values: evaluates type-annotated expressions', () => {
         expect(evalParse("(let-values ((((a : boolean) (b : number)) (values #t 2))) (if a b (+ b b)))")).to.deep.equal(makeOk(2))
     });
+
+    it('let-values: to calm sagiv', () => {
+        expect(bind(parseL5(`
+                (L5 (define f
+                    (lambda (x)
+                    (values 1 2 3)))
+                    (let-values (((a b c) (f 0)))
+                    (+ a b c))
+                    )`), evalProgram)).to.deep.equal(makeOk(6));
+    });
+
+    it('let-values: to calm sagiv 2', () => {
+        expect(bind(parseL5(`
+                (L5 (let-values (((n s) (values 1 "string"))) n)
+                    )`), evalProgram)).to.deep.equal(makeOk(1));
+    });
     
 });
